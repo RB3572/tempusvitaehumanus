@@ -285,7 +285,7 @@ function Headline({
 
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         <span className="hero-numeral">
-          {(post.readoutQ === null ? post.mode : post.readout).toFixed(1)}
+          {post.readout.toFixed(1)}
         </span>
         <span
           style={{
@@ -307,8 +307,15 @@ function Headline({
           marginTop: 4,
         }}
       >
+        {/* ALWAYS the adopted readout, never the mode. decode.ts sets `readout` to the
+            posterior mean when no quantile is fitted, and that mean is the statistic
+            every reported MAE is computed from. Headlining `mode` instead -- which this
+            did until 2026-08-25 -- puts a number on screen that no published figure
+            describes; on the first real frame tested they differed by 14 minutes. The
+            mouse project never hit it because it always shipped a fitted quantile, so
+            the `mode` branch never ran in production there. */}
         {post.readoutQ === null
-          ? `most likely · ${formatHours(post.mode)}`
+          ? `posterior mean · ${formatHours(post.readout)}`
           : `model readout · fitted quantile q=${post.readoutQ} · ${formatHours(post.readout)}`}
         {capturedAt && (
           <>
@@ -316,7 +323,7 @@ function Headline({
             <strong style={{ color: "#111", fontWeight: 700 }}>
               {addHours(
                 capturedAt,
-                post.readoutQ === null ? post.mode : post.readout,
+                post.readout,
               ).toLocaleString([], {
                 weekday: "short",
                 hour: "2-digit",
