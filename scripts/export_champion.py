@@ -130,6 +130,10 @@ def main() -> int:
                     help="the training repo's analysis/ folder; the published scores are "
                          "read from it rather than typed in, so the site cannot quote a "
                          "number that no longer matches the record")
+    ap.add_argument("--trained-on-everything", action="store_true",
+                    dest="trained_on_everything",
+                    help="acknowledge that the head saw the sealed vault, which on this "
+                         "project is the deliberate state since 2026-08-24")
     ap.add_argument("--reuse-fp32", action="store_true", dest="reuse_fp32",
                     help="skip the torch export and convert an existing "
                          "cleavage_fp32.onnx -- for iterating on precision only")
@@ -137,8 +141,8 @@ def main() -> int:
 
     if not args.bundle.is_file():
         print(f"ERROR: no bundle at {args.bundle}\n"
-              f"  Produce it with: python training/export_final.py --tag ssl_vitl_tta8 "
-              f"--sigma 1.0 --q 0.48")
+              f"  Produce it with: python training/export_final.py --tag ssl_vitl_reg4 "
+              f"--sigma 1.0 --include-test")
         return 1
     sys.path.insert(0, str(args.training.resolve()))
     from extract_features import build                                # noqa: E402
@@ -148,11 +152,17 @@ def main() -> int:
     print(f"  unit:   {b['unit']}")
     print(f"  trunk:  {b['backbone']}  views {b['tta_views']}  "
           f"readout {b['readout']} q={b.get('q')}")
-    if b.get("included_sealed_sessions"):
-        print("  REFUSING: this bundle's head saw the sealed sessions. A public demo "
-              "must\n  not ship a model trained on the vault -- re-export without "
-              "--include-test.")
+    if b.get("included_sealed_sessions") and not args.trained_on_everything:
+        print("  REFUSING: this bundle's head saw the sealed vault." + '\\n' +
+              "  On this project that is EXPECTED: the vault was deliberately folded" + '\\n' +
+              "  into training on 2026-08-24, so no held-out estimate exists any more," + '\\n' +
+              "  and cross-validation is not a substitute for one. Pass" + '\\n' +
+              "  --trained-on-everything to acknowledge that and proceed; the site then" + '\\n' +
+              "  states it beside the score rather than implying a held-out number.")
         return 1
+    if b.get("included_sealed_sessions"):
+        print("  NOTE: head trained on ALL embryos, vault included. The published")
+        print("        figure is cross-validation, NOT a held-out estimate.")
 
     # Older bundles predate the `size` field; every one of them was built at 224,
     # which is also the only size the cached images and the trunk were ever used at.
