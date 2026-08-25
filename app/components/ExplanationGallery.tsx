@@ -24,16 +24,16 @@ import { useState } from "react";
 type Item = { file: string; embryo: string; trueH: number; predH: number };
 
 const ITEMS: Item[] = [
-  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 1.88 },
-  { file: "01_PC758-2_f77_gradient.png", embryo: "PC758-2", trueH: 3.0, predH: 3.97 },
-  { file: "02_GE294-4_f62_gradient.png", embryo: "GE294-4", trueH: 5.8, predH: 7.27 },
-  { file: "03_PN636-1-6_f3_gradient.png", embryo: "PN636-1-6", trueH: 8.8, predH: 7.34 },
-  { file: "04_DE604-3_f56_gradient.png", embryo: "DE604-3", trueH: 11.7, predH: 11.8 },
-  { file: "05_DM1046-12_f27_gradient.png", embryo: "DM1046-12", trueH: 14.6, predH: 14.94 },
-  { file: "06_OJ319-6_f29_gradient.png", embryo: "OJ319-6", trueH: 17.6, predH: 18.5 },
-  { file: "07_RM126-6_f14_gradient.png", embryo: "RM126-6", trueH: 20.6, predH: 20.12 },
-  { file: "08_MA488-3_f12_gradient.png", embryo: "MA488-3", trueH: 23.9, predH: 25.33 },
-  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 27.22 },
+  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 2.81 },
+  { file: "01_PC758-2_f77_gradient.png", embryo: "PC758-2", trueH: 3.0, predH: 3.54 },
+  { file: "02_GE294-4_f62_gradient.png", embryo: "GE294-4", trueH: 5.8, predH: 6.13 },
+  { file: "03_PN636-1-6_f3_gradient.png", embryo: "PN636-1-6", trueH: 8.8, predH: 8.74 },
+  { file: "04_DE604-3_f56_gradient.png", embryo: "DE604-3", trueH: 11.7, predH: 11.72 },
+  { file: "05_DM1046-12_f27_gradient.png", embryo: "DM1046-12", trueH: 14.6, predH: 14.4 },
+  { file: "06_OJ319-6_f29_gradient.png", embryo: "OJ319-6", trueH: 17.6, predH: 17.77 },
+  { file: "07_RM126-6_f14_gradient.png", embryo: "RM126-6", trueH: 20.6, predH: 20.3 },
+  { file: "08_MA488-3_f12_gradient.png", embryo: "MA488-3", trueH: 23.9, predH: 24.31 },
+  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 40.02 },
 ];
 
 export default function ExplanationGallery() {
@@ -66,7 +66,8 @@ export default function ExplanationGallery() {
         For each frame: the input, a saliency map of how strongly each region moves the
         predicted time, and the same frame with everything outside the top quarter of that
         map removed. The hot region sits on the zygote — usually on the pronuclei — and not
-        on the dish.
+        on the dish, the well wall, or on debris such as the air bubble in the 41.5 h
+        frame.
       </p>
 
       <div
@@ -149,6 +150,30 @@ export default function ExplanationGallery() {
         attention, which is free to compute and is what most published figures show,
         scored <strong>0.00</strong> against the same yardstick — so it is not shown here,
         because on this model it explains nothing.
+      </div>
+      <div
+        style={{
+          marginTop: 10,
+          padding: "12px 14px",
+          borderRadius: 9,
+          background: "#faf9f6",
+          border: "1px solid var(--border)",
+          fontSize: 11.5,
+          fontWeight: 600,
+          color: "#6b6b66",
+          lineHeight: 1.7,
+          maxWidth: "84ch",
+        }}
+      >
+        <strong style={{ color: "#3a3a36" }}>Why the backbone has register tokens.</strong>{" "}
+        An earlier version of these figures showed a bright blob on empty dish below the
+        embryo. It was not the model reading a hidden timestamp — nothing in that region
+        correlates with elapsed time (max |r| = 0.09 over 3,000 frames). It was a single
+        high-norm <em>artifact token</em>: a plain DINOv2 ViT hijacks one low-information
+        patch as global scratch space, giving it a norm <strong>11.8×</strong> the median.
+        Switching to the four-register variant, which exists precisely for this, dropped
+        that ratio to <strong>1.4×</strong> with no token above threshold — and cost no
+        accuracy.
       </div>
     </section>
   );
