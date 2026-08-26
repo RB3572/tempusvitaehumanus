@@ -113,7 +113,27 @@ export interface InferenceResult {
  * and runs in clearly-labelled demo mode -- which is the honest failure.
  */
 const MODEL_URL =
-  process.env.NEXT_PUBLIC_MODEL_URL || "/models/cleavage.onnx";
+  process.env.NEXT_PUBLIC_MODEL_URL ||
+  "https://pub-ba5c8c9e2af84560b29ea26ea363eb80.r2.dev/cleavage.onnx";
+
+/**
+ * The weights are stored as N consecutive byte-range parts, fetched and concatenated.
+ *
+ * WHY, since one file would obviously be simpler: `wrangler r2 object put` refuses
+ * anything over 300 MiB, and the graph is 581 MiB. Uploading it whole needs S3
+ * multipart, which needs an R2 access key pair that only the dashboard can mint --
+ * a credential this project does not have and does not want to hold. Three parts of
+ * 194 MiB each upload with the CLI alone.
+ *
+ * The split is byte-exact and order-dependent: part(i) is bytes [i*size, (i+1)*size)
+ * of the original, so concatenating them in order reproduces the file bit for bit.
+ * `sha256` in model_meta.json is the checksum of the WHOLE reassembled graph and is
+ * the thing to verify against if a load ever misbehaves.
+ *
+ * Set NEXT_PUBLIC_MODEL_PARTS to 0 (or host a single object and point
+ * NEXT_PUBLIC_MODEL_URL at it) to go back to a one-file fetch with no code change.
+ */
+const MODEL_PARTS = Number(process.env.NEXT_PUBLIC_MODEL_PARTS ?? 3);
 const META_URL = "/models/model_meta.json";
 const CACHE_NAME = "tempusvitae-model-v1";
 
@@ -155,48 +175,60 @@ async function fetchModelBytes(): Promise<ArrayBuffer> {
     }
   }
 
-  const res = await fetch(MODEL_URL);
-  if (!res.ok) throw new Error(`model fetch failed: ${res.status}`);
-  const total = Number(res.headers.get("content-length") || 0);
-
-  // Tee the stream: one branch feeds the progress readout, the other is handed to
-  // the Cache API unread so the browser stores it without us buffering twice.
-  const reader = res.body?.getReader();
-  if (!reader) {
-    const buf = await res.arrayBuffer();
-    progressFn?.({ loaded: buf.byteLength, total: buf.byteLength, cached: false, done: true });
-    return buf;
+  // Resolve the part list first so progress can be reported against the true total
+  // rather than jumping back to zero at each part boundary.
+  const urls = MODEL_PARTS > 1
+    ? Array.from({ length: MODEL_PARTS }, (_, i) => `${MODEL_URL}.part${i}`)
+    : [MODEL_URL];
+  const heads = await Promise.all(
+    urls.map((u) => fetch(u, { method: "HEAD" }))
+  );
+  for (let i = 0; i < heads.length; i++) {
+    if (!heads[i].ok) throw new Error(`model fetch failed: ${heads[i].status} on part ${i}`);
   }
-  const chunks: Uint8Array[] = [];
-  let loaded = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      chunks.push(value);
-      loaded += value.byteLength;
-      progressFn?.({ loaded, total, cached: false, done: false });
+  const total = heads.reduce(
+    (n, h) => n + Number(h.headers.get("content-length") || 0), 0);
+
+  const parts: Uint8Array[] = [];
+  let seen = 0;
+  for (const url of urls) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`model fetch failed: ${res.status}`);
+    const reader = res.body?.getReader();
+    if (!reader) {
+      const b = new Uint8Array(await res.arrayBuffer());
+      parts.push(b);
+      seen += b.byteLength;
+      progressFn?.({ loaded: seen, total, cached: false, done: false });
+      continue;
+    }
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        parts.push(value);
+        seen += value.byteLength;
+        progressFn?.({ loaded: seen, total, cached: false, done: false });
+      }
     }
   }
-  const bytes = new Uint8Array(loaded);
-  let at = 0;
-  for (const c of chunks) {
-    bytes.set(c, at);
-    at += c.byteLength;
-  }
-  progressFn?.({ loaded, total: total || loaded, cached: false, done: true });
-
-  if (caches_) {
-    try {
-      const cache = await caches_.open(CACHE_NAME);
-      await cache.put(MODEL_URL, new Response(bytes, {
-        headers: { "content-type": "application/octet-stream" },
-      }));
-    } catch {
-      // A full or unavailable cache is not a reason to fail the prediction.
+  {
+    const bytes = new Uint8Array(seen);
+    let at = 0;
+    for (const c of parts) { bytes.set(c, at); at += c.byteLength; }
+    progressFn?.({ loaded: seen, total: total || seen, cached: false, done: true });
+    if (caches_) {
+      try {
+        const cache = await caches_.open(CACHE_NAME);
+        await cache.put(MODEL_URL, new Response(bytes, {
+          headers: { "content-type": "application/octet-stream" },
+        }));
+      } catch {
+        // A full or unavailable cache is not a reason to fail the prediction.
+      }
     }
+    return bytes.buffer;
   }
-  return bytes.buffer;
 }
 
 let metaPromise: Promise<{ meta: ModelMeta; hasModel: boolean }> | null = null;
@@ -224,12 +256,17 @@ export function loadMeta(): Promise<{ meta: ModelMeta; hasModel: boolean }> {
       // so fall back to a one-byte ranged GET, which costs nothing and exercises
       // the same CORS path the real download will take. A plain GET is not an
       // option -- it would pull 610 MB just to answer "does this exist".
+      // Probe the FIRST PART, not MODEL_URL. When the weights are split, MODEL_URL
+      // is a prefix and no object exists at it -- probing it 404s and the site drops
+      // into demo mode with the real weights sitting right there, which is exactly
+      // what happened on the first end-to-end test.
+      const probeUrl = MODEL_PARTS > 1 ? `${MODEL_URL}.part0` : MODEL_URL;
       for (const init of [
         { method: "HEAD" } as RequestInit,
         { method: "GET", headers: { Range: "bytes=0-0" } } as RequestInit,
       ]) {
         try {
-          const r = await fetch(MODEL_URL, init);
+          const r = await fetch(probeUrl, init);
           if (r.ok || r.status === 206) return { meta, hasModel: true };
         } catch {
           // try the next probe

@@ -46,6 +46,10 @@ next-env.d.ts
 # NEXT_PUBLIC_MODEL_URL. model_meta.json is small and IS committed.
 *.onnx
 public/models/cleavage*.onnx
+# ...and the split upload parts. `cleavage*.onnx` does NOT match `cleavage.onnx.part0`
+# -- the pattern requires the name to END in .onnx -- so without this line three
+# 194 MiB blobs get staged and GitHub rejects the push at the 100 MB blob limit.
+public/models/cleavage.onnx.part*
 
 # export scratch
 export_champ*.log

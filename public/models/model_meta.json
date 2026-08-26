@@ -29,5 +29,8 @@
   "shrunkBy": "initializers-only",
   "parityMaxBinDelta": 0.000154,
   "parityHoursDelta": 0.0009,
-  "graphVsBundleMaxHours": 0.00605
+  "graphVsBundleMaxHours": 0.00605,
+  "modelUrl": "https://pub-ba5c8c9e2af84560b29ea26ea363eb80.r2.dev/cleavage.onnx",
+  "parts": 3,
+  "partsNote": "Stored as 3 consecutive byte-range parts because wrangler refuses objects over 300 MiB and the graph is 581 MiB. Concatenating part0..part2 in order reproduces the file byte for byte; `sha256` is the checksum of the reassembled whole."
 }
