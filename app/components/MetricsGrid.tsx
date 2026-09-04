@@ -57,7 +57,12 @@ export default function MetricsGrid({
     {
       label: "Std deviation",
       value: `${post.sd.toFixed(2)} h`,
-      hint: "Spread of the posterior. Small means the model is confident.",
+      hint:
+        "Spread of the posterior — a RELATIVE confidence signal, useful for comparing " +
+        "one prediction against another, not a calibrated error bar. The same " +
+        "over-confidence that makes the raw 80%-probability span cover only 29% of the " +
+        "time applies here: treat a small sd as 'this one is easier than that one', not " +
+        "as 'the answer is within this'. The interval above is the calibrated quantity.",
     },
     {
       label: "Peak probability",
