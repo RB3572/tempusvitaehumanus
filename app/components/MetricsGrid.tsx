@@ -83,8 +83,12 @@ export default function MetricsGrid({
     {
       label: "Spread flag",
       value: post.bimodal ? "Wide" : "Normal",
-      sub: `(hi−lo) ${(post.hi - post.lo).toFixed(1)} vs 3.2·sd ${(3.2 * post.sd).toFixed(1)}`,
-      hint: "The predict.py rule: interval wider than 3.2 standard deviations. Reported as-is so exports match the CLI — note it measures flatness, not the number of peaks.",
+      sub: `3.2·sd ${(3.2 * post.sd).toFixed(1)} h`,
+      hint:
+        "The predict.py rule: the 80%-mass span wider than 3.2 standard deviations. It " +
+        "is evaluated on the 80% span even though the interval above is drawn at a " +
+        "calibrated, wider mass — otherwise widening the display would fire this flag on " +
+        "almost everything. Measures flatness, not the number of peaks.",
     },
   ];
 
