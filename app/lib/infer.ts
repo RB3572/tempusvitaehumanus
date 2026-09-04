@@ -188,9 +188,34 @@ export function onModelProgress(fn: ProgressFn | null) {
  * response is streamed so the UI can show real progress rather than a spinner
  * that sits still for minutes.
  */
+/**
+ * Delete cache buckets from previous model versions.
+ *
+ * Bumping CACHE_NAME forces a refetch but does NOT reclaim the old bucket, so every model
+ * update would leave another ~610 MB stranded in each returning visitor's browser --
+ * observed after the v2 -> v3 bump, which left both buckets present. Storage a page can
+ * never read again is the page's litter to clear.
+ *
+ * Deletes only buckets carrying our own prefix, never anything else the origin stores.
+ */
+async function evictOldModelCaches(caches_: CacheStorage) {
+  try {
+    const keys = await caches_.keys();
+    await Promise.all(
+      keys
+        .filter((k) => k.startsWith("tempusvitae-model-") && k !== CACHE_NAME)
+        .map((k) => caches_.delete(k)),
+    );
+  } catch {
+    // A browser that refuses cache enumeration (private mode, storage disabled) must not
+    // stop the model from loading; this is housekeeping, not a prerequisite.
+  }
+}
+
 async function fetchModelBytes(): Promise<ArrayBuffer> {
   const caches_ = typeof caches !== "undefined" ? caches : null;
   if (caches_) {
+    await evictOldModelCaches(caches_);
     const cache = await caches_.open(CACHE_NAME);
     const hit = await cache.match(MODEL_URL);
     if (hit) {
