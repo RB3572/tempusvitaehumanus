@@ -21,19 +21,20 @@ import { useState } from "react";
  * shown, and the number is quoted rather than hidden.
  */
 
+// Rendered from trunk `ssl_vitl_96k`. Regenerate with scripts/sync_explain.py.
 type Item = { file: string; embryo: string; trueH: number; predH: number };
 
 const ITEMS: Item[] = [
-  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 2.81 },
-  { file: "01_PC758-2_f77_gradient.png", embryo: "PC758-2", trueH: 3.0, predH: 3.54 },
-  { file: "02_GE294-4_f62_gradient.png", embryo: "GE294-4", trueH: 5.8, predH: 6.13 },
-  { file: "03_PN636-1-6_f3_gradient.png", embryo: "PN636-1-6", trueH: 8.8, predH: 8.74 },
-  { file: "04_DE604-3_f56_gradient.png", embryo: "DE604-3", trueH: 11.7, predH: 11.72 },
-  { file: "05_DM1046-12_f27_gradient.png", embryo: "DM1046-12", trueH: 14.6, predH: 14.4 },
-  { file: "06_OJ319-6_f29_gradient.png", embryo: "OJ319-6", trueH: 17.6, predH: 17.77 },
-  { file: "07_RM126-6_f14_gradient.png", embryo: "RM126-6", trueH: 20.6, predH: 20.3 },
-  { file: "08_MA488-3_f12_gradient.png", embryo: "MA488-3", trueH: 23.9, predH: 24.31 },
-  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 40.02 },
+  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 1.18 },
+  { file: "01_GSS052-6_f84_gradient.png", embryo: "GSS052-6", trueH: 3.0, predH: 3.02 },
+  { file: "02_HE444-4_f67_gradient.png", embryo: "HE444-4", trueH: 5.8, predH: 5.99 },
+  { file: "03_LK584-2_f96_gradient.png", embryo: "LK584-2", trueH: 8.8, predH: 8.85 },
+  { file: "04_LL854-1_f53_gradient.png", embryo: "LL854-1", trueH: 11.7, predH: 11.35 },
+  { file: "05_LC161-2-5_f44_gradient.png", embryo: "LC161-2-5", trueH: 14.6, predH: 14.44 },
+  { file: "06_VF269-7_f34_gradient.png", embryo: "VF269-7", trueH: 17.6, predH: 17.69 },
+  { file: "07_RI273-6_f6_gradient.png", embryo: "RI273-6", trueH: 20.6, predH: 21.03 },
+  { file: "08_GSS052-2_f5_gradient.png", embryo: "GSS052-2", trueH: 23.9, predH: 23.98 },
+  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 40.21 },
 ];
 
 export default function ExplanationGallery() {
@@ -65,9 +66,12 @@ export default function ExplanationGallery() {
       >
         For each frame: the input, a saliency map of how strongly each region moves the
         predicted time, and the same frame with everything outside the top quarter of that
-        map removed. The hot region sits on the zygote — usually on the pronuclei — and not
-        on the dish, the well wall, or on debris such as the air bubble in the 41.5 h
-        frame.
+        map removed. On most frames the hot region sits on the zygote, usually on the
+        pronuclei, and not on the dish or the well wall. The 41.5 h frame is the honest
+        exception — there the map also lights up an air bubble sitting outside the embryo.
+        It is the furthest-from-division example in the entire corpus, the regime where
+        the zygote itself carries least information, and it is shown rather than quietly
+        dropped: a gallery of only the clean cases would be evidence of nothing.
       </p>
 
       <div
@@ -145,11 +149,14 @@ export default function ExplanationGallery() {
         <strong style={{ color: "#3a3a36" }}>How we know this map is real.</strong> Any
         saliency method can produce a confident, meaningless picture, so all three were
         scored against occlusion — masking a region and measuring how far the prediction
-        actually moves, which makes no assumptions at all. The gradient map above tracks
-        occlusion at a rank correlation of <strong>0.38</strong>. The backbone&rsquo;s own
-        attention, which is free to compute and is what most published figures show,
-        scored <strong>0.00</strong> against the same yardstick — so it is not shown here,
-        because on this model it explains nothing.
+        actually moves, which makes no assumptions at all. On the trunk deployed here, the
+        gradient map above tracks occlusion at a rank correlation of{" "}
+        <strong>0.46</strong> (mean over 8 frames). The backbone&rsquo;s own attention —
+        free to compute, and what most published figures show — reaches{" "}
+        <strong>0.19</strong> against the same yardstick: not nothing, but under half the
+        gradient map&rsquo;s agreement, which is why it is not the map shown here.
+        An earlier version of this model scored 0.38 and 0.00 on the same two measures;
+        these are the numbers for the model you are actually running.
       </div>
       <div
         style={{

@@ -32,6 +32,7 @@ unless the decoded hours move by less than 0.01 h.
 from __future__ import annotations
 
 import argparse
+import json
 import time
 from pathlib import Path
 
@@ -49,7 +50,24 @@ PRECISION_LABEL = {
 }
 
 
-def decoded_hours(logits: np.ndarray, r_min=0.0, r_max=18.0) -> float:
+def bin_range(models_dir: Path = Path("public/models")) -> tuple[float, float]:
+    """(r_min, r_max) from model_meta.json, NOT a constant.
+
+    This module hardcoded r_max=18.0 -- the MOUSE corpus's range. This project's target
+    spans 0-42 h, so every "decoded hours delta" it printed was scaled by 18/42 and came
+    out 2.33x too small, and the `worst_h <= 0.01` acceptance bar was 2.33x looser than
+    it read. The probability bar (2e-3, scale-free) is what was actually doing the work.
+    A parity gate that silently measures the wrong quantity is worse than no gate.
+    """
+    try:
+        m = json.loads((models_dir / "model_meta.json").read_text())
+        return float(m["rMin"]), float(m["rMax"])
+    except Exception:
+        raise SystemExit("shrink_onnx: cannot read rMin/rMax from model_meta.json; "
+                         "refusing to guess the bin range for the parity check")
+
+
+def decoded_hours(logits: np.ndarray, r_min: float, r_max: float) -> float:
     p = np.exp(logits - logits.max())
     p = p / p.sum()
     edges = np.linspace(r_min, r_max, p.size + 1)
@@ -62,6 +80,7 @@ def parity(src: Path, dst: Path, n_probe=2) -> tuple[bool, float, float]:
     a = ort.InferenceSession(str(src), providers=["CPUExecutionProvider"])
     b = ort.InferenceSession(str(dst), providers=["CPUExecutionProvider"])
     rng = np.random.default_rng(0)
+    r_min, r_max = bin_range(src.parent)
     worst_p, worst_h = 0.0, 0.0
     for _ in range(n_probe):
         x = rng.random((1, 1, 224, 224), dtype=np.float32)
@@ -70,7 +89,8 @@ def parity(src: Path, dst: Path, n_probe=2) -> tuple[bool, float, float]:
         pa = np.exp(ra - ra.max()); pa /= pa.sum()
         pb = np.exp(rb - rb.max()); pb /= pb.sum()
         worst_p = max(worst_p, float(np.abs(pa - pb).max()))
-        worst_h = max(worst_h, abs(decoded_hours(ra) - decoded_hours(rb)))
+        worst_h = max(worst_h, abs(decoded_hours(ra, r_min, r_max)
+                                   - decoded_hours(rb, r_min, r_max)))
     return worst_h <= 0.01 and worst_p <= 2e-3, worst_p, worst_h
 
 

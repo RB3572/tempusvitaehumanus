@@ -227,10 +227,13 @@ export default function Analyzer() {
                   lineHeight: 1.6,
                 }}
               >
-                These 48 numbers are the model&rsquo;s entire output. It does not
-                segment the embryo, mark pronuclei, or localise anything — the backbone
+                These {analysis.logits.length} numbers are the model&rsquo;s entire
+                output. It does not segment the embryo or mark pronuclei: the backbone
                 pools its features across the whole frame before the head sees them, so
-                no spatial information survives to the prediction.
+                the head is handed no map. Where the model looks can still be recovered
+                afterwards, by differentiating this output with respect to each patch —
+                that is what the saliency maps below show, and they are scored against
+                occlusion rather than taken on faith.
               </p>
             </Panel>
           </div>

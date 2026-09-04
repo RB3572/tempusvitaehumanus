@@ -135,7 +135,19 @@ const MODEL_URL =
  */
 const MODEL_PARTS = Number(process.env.NEXT_PUBLIC_MODEL_PARTS ?? 3);
 const META_URL = "/models/model_meta.json";
-const CACHE_NAME = "tempusvitae-model-v1";
+/**
+ * BUMP THIS EVERY TIME THE WEIGHTS CHANGE.
+ *
+ * The graph is cached under MODEL_URL in this bucket, and uploading new bytes to the same
+ * R2 object does NOT invalidate it. A returning visitor whose browser holds the old 610 MB
+ * blob keeps running the old model indefinitely, with no error and no visible sign that
+ * anything is stale — the page looks completely healthy while reporting a superseded
+ * model's numbers. Changing the bucket name is what forces the refetch.
+ *
+ * v2 (2026-09-03): ssl_vitl_96k champion, 1.290 h per-embryo, replacing the 2.439 h
+ * export of 2026-08-25.
+ */
+const CACHE_NAME = "tempusvitae-model-v2";
 
 export interface LoadProgress {
   /** Bytes received so far. */

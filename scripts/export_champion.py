@@ -275,6 +275,24 @@ def main() -> int:
     # number here would quietly go stale the next time an arm moved the champion.
     scores = {}
     A = args.analysis
+    # champion_96k.json is THIS project's score record, written by
+    # scratch/champion_number.py for the exact recipe being exported. The three readers
+    # below it (arm_a0, tier2_opened, nyu_eval) are inherited MOUSE filenames that have
+    # never existed here, so every one of them silently excepted and the export shipped a
+    # meta with no accuracy figure at all -- which is how the live site ended up quoting
+    # a valMae from a hand-edit two generations ago.
+    try:
+        c96 = json.loads((A / "champion_96k.json").read_text())
+        scores["valMae"] = c96["mae_embryo"]
+        scores["valMaeCI95"] = c96["ci95"]
+        scores["valRhoWithin"] = c96["rho_within"]
+        scores["valSlope"] = c96["slope"]
+        scores["valProtocol"] = c96["protocol"]
+        scores["baseline"] = c96["baseline_embryo"]
+        scores["nEmbryos"] = c96["n_embryos"]
+        scores["nFrames"] = c96["n_frames"]
+    except Exception:
+        pass
     try:
         a0 = json.loads((A / "arm_a0.json").read_text())
         if "LOSO" in str(a0.get("protocol", "")):
@@ -307,7 +325,15 @@ def main() -> int:
         "nBins": int(b["n_bins"]),
         "imageSize": size,
         "backbone": b["backbone"],
-        "recipe": "frozen DINOv2 ViT-L/14 + temporal SSL, TTA-8, 3-seed head",
+        # Built from the bundle, not asserted. This string said "TTA-8" while
+        # `ttaViews` two lines down read 1 -- the meta contradicted itself, and the
+        # recipe line is the one a reader believes.
+        "recipe": (f"frozen DINOv2 ViT-L/14 with 4 register tokens, temporally "
+                   f"self-supervised on the pre-cleavage window; "
+                   f"{len(b['heads'])}-seed {b['hidden']}x{b['depth']} distributional "
+                   f"head, "
+                   + (f"TTA-{int(b['tta_views'])}" if int(b["tta_views"]) > 1
+                      else "no TTA")),
         "readout": b["readout"],
         "q": b.get("q"),
         "sigmaHours": b.get("sigma_hours"),

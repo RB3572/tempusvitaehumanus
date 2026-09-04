@@ -1,8 +1,12 @@
 # Model hosting — RESOLVED
 
-**Status 2026-08-21: done. The site is live at <https://tempusvitae.rishib.com/> with
-real weights.** This file was a request for help; it is kept as a record of what the
-answer turned out to be, because the failed options are worth not retrying.
+**Status: done. The site is live at <https://tempusvitaehumanus.rishib.com/> with real
+weights.** This file was a request for help; it is kept as a record of what the answer
+turned out to be, because the failed options are worth not retrying.
+
+**This file was inherited from the sibling MOUSE project and described that site**, down
+to its hostname, its 48-bin output and its scores. Corrected 2026-09-03; if a number here
+looks like it belongs to another corpus, it probably did.
 
 The weights are served from Cloudflare, with Vercel building the site from GitHub `main`
 and `NEXT_PUBLIC_MODEL_URL` pointing at the object URL.
@@ -14,10 +18,10 @@ and `NEXT_PUBLIC_MODEL_URL` pointing at the object URL.
 | | |
 |---|---|
 | File | `public/models/cleavage.onnx` (git-ignored, never committed) |
-| Size | **610 MB** — fp16 weights, fp32 activations, halved from 1219 MB |
-| Parity vs the fp32 graph | max bin delta 1.19e-4, decoded hours delta **0.0035 h** |
-| Input / output | `image [1,1,224,224]` → `log_posterior [1,48]` |
-| Recipe | frozen DINOv2 ViT-L/14 + temporal SSL, TTA-8 in-graph, 3-seed head, fitted-quantile readout q=0.48 |
+| Size | **~609 MB** — fp16 weights, fp32 activations, halved from 1217 MB |
+| Input / output | `image [1,1,224,224]` → `log_posterior [1,64]` — **64 bins over 0–42 h**, not the mouse project's 48 over 0–18 |
+| Recipe | frozen DINOv2 ViT-L/14 **with 4 register tokens**, temporal SSL on the pre-cleavage window; 3-seed 256×2 head; **posterior-mean readout, no fitted quantile, no TTA** |
+| Why no TTA | measured on this trunk at **−0.001 h**. The mouse champion used TTA-8; carrying it over would cost eight trunk passes per prediction in a browser for nothing. |
 
 `model_meta.json` is small and **is** committed; it carries the readout parameters and
 the published scores, and the page reads them from it.
@@ -56,14 +60,23 @@ rebuilding changes nothing on the deployed site.
 
 Open the site. **The absence of the amber "Demo output" badge means the model was
 found.** The badge instead shows the execution provider and a timing — `webgpu` when the
-browser supports it, `wasm` otherwise (wasm is 20–35 s for a ViT-L with eight TTA views,
-which is slow but correct). The headline should read a plausible number of hours with a
-"model readout · fitted quantile q=0.48" caption.
+browser supports it, `wasm` otherwise (wasm is slow but correct for a ViT-L —
+and this site runs ONE view, not eight, so it is markedly faster than the mouse site).
+The headline should read a plausible number of hours captioned "posterior mean".
 
 First load fetches 610 MB with a progress readout, then caches it in the browser's Cache
 API, so later visits are instant.
 
 **Do not swap in a smaller model to make the first load nicer.** The graph is the exact
 recipe every published number describes. Substituting a smaller trunk would put a model
-on the page that none of the reported scores — 1.484 h cross-validated, 1.360 h on the
-sealed vault, 1.269 h external — actually evaluate.
+on the page that the reported score does not evaluate.
+
+The score for what is shipped: **1.290 h per-embryo MAE** [1.212, 1.382], 6-fold grouped
+CV over 536 patient↔slide components, 3 seeds, against a 6.81 h guess-the-median
+baseline. There is **no held-out number** — the sealed vault was deliberately folded into
+training on 2026-08-24, so everything is cross-validation and the meta says so.
+
+**Bump `CACHE_NAME` in `app/lib/infer.ts` whenever the weights change.** The browser
+caches the graph under `MODEL_URL`; new bytes at the same URL do not invalidate it, so
+every returning visitor keeps the old model with no sign anything is stale.
+`scripts/publish_weights.py --upload` refuses to run if the name has not moved.
