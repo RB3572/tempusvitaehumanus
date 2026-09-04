@@ -40,5 +40,8 @@
   "parityNote": "parityHoursDelta is |decoded hours| between the fp32 graph and the shipped fp16 one, over the model's own 0-42 h bin range. Measured with the corrected range (shrink_onnx.py previously hardcoded the mouse corpus's r_max=18 and understated every such delta by 2.33x).",
   "trunkSteps": 96000,
   "ttaNote": "TTA-8 measured on this trunk at -0.001 h per embryo (+0.050 at 24k steps, +0.036 at 48k). Deliberately off.",
-  "sigmaNote": "sigma 0.25, not 1.0. A global sweep called 0.25/0.5/1.0 tied inside the 0.03 h noise floor, but the soft target is a Gaussian truncated at 0, so a wide sigma pushes mass upward where the answer is smallest: at sigma 1.0 the 0-1 h band scored 0.990 h and the model predicted 1.58 h on frames truly 0.59 h out. At 0.25 that band is 0.669 h and the bias 0.63 h, at no overall cost."
+  "sigmaNote": "sigma 0.25, not 1.0. A global sweep called 0.25/0.5/1.0 tied inside the 0.03 h noise floor, but the soft target is a Gaussian truncated at 0, so a wide sigma pushes mass upward where the answer is smallest: at sigma 1.0 the 0-1 h band scored 0.990 h and the model predicted 1.58 h on frames truly 0.59 h out. At 0.25 that band is 0.669 h and the bias 0.63 h, at no overall cost.",
+  "intervalMass": 0.9999,
+  "intervalCoverage": 0.792,
+  "intervalNote": "The page draws the narrowest span holding `intervalMass` of the posterior, and that span was measured out-of-fold over all 66,573 frames to contain the true time `intervalCoverage` of the time. The two differ enormously because a distributional head trained on soft targets is over-confident: the raw 80%-mass span covers only 28.6%. The MASS is calibrated rather than the width, so the span stays the shape-aware narrowest region and can still straddle a trough on a bimodal posterior. 90% coverage is NOT reachable this way -- even at mass 0.9999 it tops out at 79.2% -- so no higher target is offered."
 }

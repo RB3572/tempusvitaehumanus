@@ -46,6 +46,17 @@ export interface ModelMeta {
   /** The fitted readout quantile, when readout is "quantile". */
   q?: number;
   sigmaHours?: number;
+  /**
+   * CALIBRATED INTERVAL. `intervalMass` is the probability mass whose narrowest span
+   * actually contains the truth `intervalCoverage` of the time, solved out-of-fold over
+   * all 66,573 frames. They are far apart: the raw 80%-mass span covers only 28.6%,
+   * because a distributional head trained on soft targets is badly over-confident. The
+   * mass is calibrated rather than the width, so the span stays the shape-aware
+   * "narrowest region holding this much probability" and can still straddle a trough on
+   * a bimodal posterior -- it is just asked for enough probability to be true.
+   */
+  intervalMass?: number;
+  intervalCoverage?: number;
   ttaViews?: number;
   /** True when the TTA views are baked into the graph (one run() call). */
   viewsInGraph?: boolean;
@@ -80,6 +91,8 @@ export const FALLBACK_META: ModelMeta = {
     "pre-cleavage window; 3-seed 256x2 distributional head, no TTA",
   readout: "mean",
   sigmaHours: 0.25,
+  intervalMass: 0.9999,
+  intervalCoverage: 0.792,
   ttaViews: 1,
   viewsInGraph: true,
   unit:

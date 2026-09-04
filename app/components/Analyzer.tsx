@@ -65,7 +65,10 @@ export default function Analyzer() {
           result.source === "onnx" && meta.readout === "quantile" && meta.q != null
             ? meta.q
             : null;
-        const post = decodePosterior(result.logits, meta.rMin, meta.rMax, 0.8, q);
+        // Decode at the CALIBRATED mass, not a nominal 0.8. The raw 80%-mass span
+        // covers 28.6% of the time; the calibrated one covers what it claims.
+        const post = decodePosterior(
+          result.logits, meta.rMin, meta.rMax, meta.intervalMass ?? 0.8, q);
         setAnalysis({
           fileName: file.name,
           image,
@@ -145,12 +148,22 @@ export default function Analyzer() {
 
           {analysis && (
             <div className="rise">
-              <Headline analysis={analysis} capturedAt={capturedAt} />
+              <Headline
+                analysis={analysis}
+                capturedAt={capturedAt}
+                coverage={meta.intervalCoverage}
+              />
             </div>
           )}
         </div>
 
-        {analysis && <MetricsGrid post={analysis.post} capturedAt={capturedAt} />}
+        {analysis && (
+          <MetricsGrid
+            post={analysis.post}
+            capturedAt={capturedAt}
+            coverage={meta.intervalCoverage}
+          />
+        )}
       </section>
 
       {analysis && (
@@ -258,9 +271,12 @@ export default function Analyzer() {
 function Headline({
   analysis,
   capturedAt,
+  coverage,
 }: {
   analysis: Analysis;
   capturedAt: Date | null;
+  /** Measured out-of-fold coverage; the raw probability mass is not it. */
+  coverage?: number;
 }) {
   const { post } = analysis;
   return (
@@ -347,7 +363,7 @@ function Headline({
         }}
       >
         <div className="metric-label" style={{ marginBottom: 5 }}>
-          {Math.round(post.mass * 100)}% interval
+          {Math.round((coverage ?? post.mass) * 100)}% interval
         </div>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.02em" }}>
           {formatHours(post.lo)} — {formatHours(post.hi)}

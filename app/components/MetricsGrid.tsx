@@ -6,9 +6,12 @@ import { addHours, formatHours } from "../lib/decode";
 export default function MetricsGrid({
   post,
   capturedAt,
+  coverage,
 }: {
   post: Posterior;
   capturedAt: Date | null;
+  /** Measured out-of-fold coverage of this interval. Falls back to the raw mass. */
+  coverage?: number;
 }) {
   const clock = (h: number) =>
     capturedAt
@@ -40,10 +43,16 @@ export default function MetricsGrid({
       hint: "Equal probability of dividing before or after this time.",
     },
     {
-      label: `${Math.round(post.mass * 100)}% interval`,
+      label: `${Math.round((coverage ?? post.mass) * 100)}% interval`,
       value: `${post.lo.toFixed(1)} – ${post.hi.toFixed(1)} h`,
       sub: `${(post.hi - post.lo).toFixed(1)} h wide`,
-      hint: "Narrowest span of time holding this much of the total probability.",
+      hint:
+        coverage != null
+          ? `Calibrated: measured out-of-fold on 66,573 frames, this span contains the ` +
+            `true time ${Math.round(coverage * 100)}% of the time. The model's raw ` +
+            `80%-probability span covers only 29%, so the probability mass is widened ` +
+            `until the interval means what it says.`
+          : "Narrowest span of time holding this much of the total probability.",
     },
     {
       label: "Std deviation",
