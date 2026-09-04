@@ -1,19 +1,21 @@
 /**
  * Inference runs IN THE BROWSER.
  *
- * The published model is a frozen DINOv2 ViT-L/14 trunk carrying temporal
- * self-supervision, its features averaged over the eight square symmetries
- * (TTA-8), read by a 3-seed ensemble of small distributional heads. All of that
- * lives inside the exported graph, so the browser makes ONE session.run() call
- * and cannot drift out of step with the evaluated recipe.
+ * The published model is a frozen DINOv2 ViT-L/14 trunk WITH 4 REGISTER TOKENS, carrying
+ * temporal self-supervision, read by a 3-seed ensemble of small distributional heads.
+ * ONE view, no TTA -- TTA-8 measured -0.001 h on this trunk, so it would cost eight trunk
+ * passes per prediction for nothing. All of that lives inside the exported graph, so the
+ * browser makes ONE session.run() call and cannot drift out of step with the evaluated
+ * recipe.
  *
  * Running it client-side keeps the site static and push-to-deploy, and means
  * unpublished microscopy never leaves the machine it was opened on.
  *
  * THE MODEL IS 610 MB AND IS NOT IN THIS REPO. The trunk is 303 M parameters.
- * The graph is halved from 1219 MB by storing weights as fp16 while keeping every
- * computation in fp32 -- full fp16 drifts the decoded answer 0.376 h and int8
- * drifts 0.35 h while producing a larger file, so neither ships. 610 MB is still
+ * The graph is halved from 1217 MB by storing weights as fp16 while keeping every
+ * computation in fp32. Converting activations to fp16 as well was tried and REJECTED by
+ * the parity gate at max |dP| 4.08e-03 against a 2e-3 bar, and int8 drifts the decoded
+ * answer 0.35 h while producing a LARGER file, so neither ships. 610 MB is still
  * six times GitHub's blob limit, so the weights are hosted externally and pointed
  * at by
  * NEXT_PUBLIC_MODEL_URL (inlined at BUILD time -- changing it later needs a
@@ -64,19 +66,25 @@ export interface ModelMeta {
 }
 
 /** Used until a real model_meta.json is published alongside the weights. */
+// Every field here was the MOUSE project's: 48 bins over 0-18 h, a fitted quantile at
+// q=0.48, TTA-8, and the non-register trunk. If the meta fetch ever failed, the page would
+// describe -- and decode against -- a different project's model. These are this corpus's.
 export const FALLBACK_META: ModelMeta = {
   rMin: 0,
-  rMax: 18,
-  nBins: 48,
+  rMax: 42,
+  nBins: 64,
   imageSize: 224,
-  backbone: "vit_large_patch14_dinov2.lvd142m",
-  recipe: "frozen DINOv2 ViT-L/14 + temporal SSL, TTA-8, 3-seed head",
-  readout: "quantile",
-  q: 0.48,
-  sigmaHours: 1.0,
-  ttaViews: 8,
+  backbone: "vit_large_patch14_reg4_dinov2.lvd142m",
+  recipe:
+    "frozen DINOv2 ViT-L/14 with 4 register tokens, temporally self-supervised on the " +
+    "pre-cleavage window; 3-seed 256x2 distributional head, no TTA",
+  readout: "mean",
+  sigmaHours: 0.25,
+  ttaViews: 1,
   viewsInGraph: true,
-  unit: "hours; measured per-embryo frame interval",
+  unit:
+    "hours until first cleavage; from the corpus' own per-frame clock (Gomez " +
+    "timeElapsed), no assumed frame interval",
 };
 
 export type InferenceSource = "onnx" | "demo";
@@ -145,9 +153,14 @@ const META_URL = "/models/model_meta.json";
  * model's numbers. Changing the bucket name is what forces the refetch.
  *
  * v2 (2026-09-03): ssl_vitl_96k champion, 1.290 h per-embryo, replacing the 2.439 h
- * export of 2026-08-25.
+ *                  export of 2026-08-25.
+ * v3 (2026-09-03): same trunk, head refit at sigma 0.25 instead of 1.0. Overall 1.281 h,
+ *                  but the point is the near-division band: 0-1 h MAE 0.990 -> 0.669, and
+ *                  the bias on frames under an hour from division 0.99 -> 0.63 h. The
+ *                  soft target is a Gaussian truncated at zero, so a wide sigma pushes
+ *                  mass upward exactly where the answer is smallest.
  */
-const CACHE_NAME = "tempusvitae-model-v2";
+const CACHE_NAME = "tempusvitae-model-v3";
 
 export interface LoadProgress {
   /** Bytes received so far. */

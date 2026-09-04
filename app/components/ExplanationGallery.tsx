@@ -13,28 +13,33 @@ import { useState } from "react";
  * rendered offline by `training/attention_map.py` on real corpus frames.
  *
  * WHY NOT SHOW THE BACKBONE'S ATTENTION INSTEAD, WHICH IS FREE
- * Because it would be a lie. Raw CLS-to-patch attention falls out of the forward pass at
- * no cost and makes a pretty picture, but measured against occlusion — masking a region
- * and watching how far the prediction actually moves — it scored a rank correlation of
- * 0.00 on this model. It shows what DINOv2 attends to, not what our prediction depends
- * on. The gradient map scored 0.38 against the same yardstick. Only the second one is
- * shown, and the number is quoted rather than hidden.
+ * Raw CLS-to-patch attention falls out of the forward pass at no cost and makes a pretty
+ * picture, but measured against occlusion — masking a region and watching how far the
+ * prediction actually moves — it reaches only 0.19 on the deployed trunk, against 0.46
+ * for the gradient map. It largely shows what DINOv2 attends to, not what our prediction
+ * depends on. Only the gradient map is shown, and both numbers are quoted rather than
+ * hidden.
+ *
+ * These figures are rendered with `--bundle`, i.e. with the DEPLOYED 3-seed ensemble, not
+ * with a head refit for the occasion. Without that flag attention_map.py fits its own
+ * single head and the captions differ from the shipped model by up to 0.36 h — a caption
+ * reading "predicted 11.35 h" for a model that does not produce it.
  */
 
-// Rendered from trunk `ssl_vitl_96k`. Regenerate with scripts/sync_explain.py.
+// Rendered from trunk `ssl_vitl_96k (deployed bundle, sigma 0.25)`. Regenerate with scripts/sync_explain.py.
 type Item = { file: string; embryo: string; trueH: number; predH: number };
 
 const ITEMS: Item[] = [
-  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 1.18 },
-  { file: "01_GSS052-6_f84_gradient.png", embryo: "GSS052-6", trueH: 3.0, predH: 3.02 },
-  { file: "02_HE444-4_f67_gradient.png", embryo: "HE444-4", trueH: 5.8, predH: 5.99 },
-  { file: "03_LK584-2_f96_gradient.png", embryo: "LK584-2", trueH: 8.8, predH: 8.85 },
-  { file: "04_LL854-1_f53_gradient.png", embryo: "LL854-1", trueH: 11.7, predH: 11.35 },
-  { file: "05_LC161-2-5_f44_gradient.png", embryo: "LC161-2-5", trueH: 14.6, predH: 14.44 },
-  { file: "06_VF269-7_f34_gradient.png", embryo: "VF269-7", trueH: 17.6, predH: 17.69 },
-  { file: "07_RI273-6_f6_gradient.png", embryo: "RI273-6", trueH: 20.6, predH: 21.03 },
-  { file: "08_GSS052-2_f5_gradient.png", embryo: "GSS052-2", trueH: 23.9, predH: 23.98 },
-  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 40.21 },
+  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 0.69 },
+  { file: "01_GSS052-6_f84_gradient.png", embryo: "GSS052-6", trueH: 3.0, predH: 3.06 },
+  { file: "02_HE444-4_f67_gradient.png", embryo: "HE444-4", trueH: 5.8, predH: 6.02 },
+  { file: "03_LK584-2_f96_gradient.png", embryo: "LK584-2", trueH: 8.8, predH: 8.82 },
+  { file: "04_LL854-1_f53_gradient.png", embryo: "LL854-1", trueH: 11.7, predH: 11.54 },
+  { file: "05_LC161-2-5_f44_gradient.png", embryo: "LC161-2-5", trueH: 14.6, predH: 14.54 },
+  { file: "06_VF269-7_f34_gradient.png", embryo: "VF269-7", trueH: 17.6, predH: 17.48 },
+  { file: "07_RI273-6_f6_gradient.png", embryo: "RI273-6", trueH: 20.6, predH: 20.96 },
+  { file: "08_GSS052-2_f5_gradient.png", embryo: "GSS052-2", trueH: 23.9, predH: 23.85 },
+  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 38.45 },
 ];
 
 export default function ExplanationGallery() {
@@ -68,10 +73,12 @@ export default function ExplanationGallery() {
         predicted time, and the same frame with everything outside the top quarter of that
         map removed. On most frames the hot region sits on the zygote, usually on the
         pronuclei, and not on the dish or the well wall. The 41.5 h frame is the honest
-        exception — there the map also lights up an air bubble sitting outside the embryo.
-        It is the furthest-from-division example in the entire corpus, the regime where
-        the zygote itself carries least information, and it is shown rather than quietly
-        dropped: a gallery of only the clean cases would be evidence of nothing.
+        exception — there an air bubble outside the embryo also lights up: not the map&rsquo;s
+        hottest region, which stays on the zygote, but bright enough to survive into the
+        top quarter. It is the furthest-from-division example in the entire corpus, the
+        regime where the zygote itself carries least information, and it is shown rather
+        than quietly dropped: a gallery of only the clean cases would be evidence of
+        nothing.
       </p>
 
       <div
