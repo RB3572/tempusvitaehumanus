@@ -11,7 +11,7 @@ import { addHours, formatHours, probWithin } from "../lib/decode";
  * The mean is deliberately NOT the loudest mark here. On a bimodal posterior it
  * lands in the trough between the two peaks -- a time the model considers
  * unlikely -- so it is drawn as one marker among several rather than as "the"
- * answer, and the 80% interval and the peaks are given equal weight.
+ * answer, and the calibrated interval and the peaks are given equal weight.
  */
 
 const W = 1000;
@@ -24,9 +24,13 @@ const TOP = 26;
 export default function Timeline({
   post,
   capturedAt,
+  coverage,
 }: {
   post: Posterior;
   capturedAt: Date | null;
+  /** Measured out-of-fold coverage. The raw probability mass is NOT it: the span is
+   *  drawn at mass 0.9999, so labelling it by the mass reads "100% interval". */
+  coverage?: number;
 }) {
   const uid = useId().replace(/:/g, "");
   const [hover, setHover] = useState<number | null>(null);
@@ -74,7 +78,7 @@ export default function Timeline({
         role="img"
         aria-label={`Probability of first cleavage over time. Most likely ${formatHours(
           post.mode,
-        )} from now, with an ${Math.round(post.mass * 100)} percent interval from ${formatHours(
+        )} from now, with an ${Math.round((coverage ?? post.mass) * 100)} percent interval from ${formatHours(
           post.lo,
         )} to ${formatHours(post.hi)}.`}
         onMouseMove={(e) => {
@@ -99,7 +103,7 @@ export default function Timeline({
           </clipPath>
         </defs>
 
-        {/* 80% interval, behind everything */}
+        {/* the calibrated interval, behind everything */}
         <rect
           x={xOf(post.lo)}
           y={TOP - 6}
@@ -314,7 +318,7 @@ export default function Timeline({
         <LegendItem
           colour="#111111"
           faded
-          label={`${Math.round(post.mass * 100)}% interval`}
+          label={`${Math.round((coverage ?? post.mass) * 100)}% interval`}
           shape="band"
         />
         {post.bimodal && post.peaks[1] && (

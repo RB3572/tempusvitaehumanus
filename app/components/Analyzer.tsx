@@ -176,7 +176,11 @@ export default function Analyzer() {
             title="Timeline"
             caption="The full posterior laid along time. Hover for the chance of having divided by any point."
           >
-            <Timeline post={analysis.post} capturedAt={capturedAt} />
+            <Timeline
+              post={analysis.post}
+              capturedAt={capturedAt}
+              coverage={meta.intervalCoverage}
+            />
           </Panel>
 
           <div
