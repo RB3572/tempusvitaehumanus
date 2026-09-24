@@ -8,10 +8,12 @@ export default function DropZone({
   onFile,
   busy,
   compact,
+  disabled = false,
 }: {
   onFile: (file: File) => void;
   busy: boolean;
   compact?: boolean;
+  disabled?: boolean;
 }) {
   const [over, setOver] = useState(false);
   const [rejected, setRejected] = useState<string | null>(null);
@@ -37,22 +39,23 @@ export default function DropZone({
         role="button"
         tabIndex={0}
         aria-label="Drop an embryo image here, or press Enter to browse"
-        onClick={() => !busy && inputRef.current?.click()}
+        aria-disabled={disabled}
+        onClick={() => !busy && !disabled && inputRef.current?.click()}
         onKeyDown={(e) => {
-          if ((e.key === "Enter" || e.key === " ") && !busy) {
+          if ((e.key === "Enter" || e.key === " ") && !busy && !disabled) {
             e.preventDefault();
             inputRef.current?.click();
           }
         }}
         onDragOver={(e) => {
           e.preventDefault();
-          if (!busy) setOver(true);
+          if (!busy && !disabled) setOver(true);
         }}
         onDragLeave={() => setOver(false)}
         onDrop={(e) => {
           e.preventDefault();
           setOver(false);
-          if (!busy) accept(e.dataTransfer.files);
+          if (!busy && !disabled) accept(e.dataTransfer.files);
         }}
         style={{
           border: `1.5px dashed ${over ? "#111111" : "#dededb"}`,
@@ -60,7 +63,8 @@ export default function DropZone({
           borderRadius: 16,
           padding: compact ? "22px 18px" : "44px 24px",
           textAlign: "center",
-          cursor: busy ? "progress" : "pointer",
+          cursor: disabled ? "not-allowed" : busy ? "progress" : "pointer",
+          opacity: disabled ? 0.58 : 1,
           transition:
             "border-color .2s cubic-bezier(.2,.8,.2,1), background .2s cubic-bezier(.2,.8,.2,1)",
         }}
@@ -97,10 +101,14 @@ export default function DropZone({
             marginBottom: 4,
           }}
         >
-          {busy ? "Analysing…" : "Drop an embryo image"}
+          {disabled ? "Model unavailable" : busy ? "Analysing…" : "Drop an embryo image"}
         </div>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: "#747474" }}>
-          {busy ? "Running the model in your browser" : "or click to browse · TIFF, PNG, JPEG"}
+          {disabled
+            ? "Predictions are disabled until the trained model loads"
+            : busy
+              ? "Running the model in your browser"
+              : "or click to browse · TIFF, PNG, JPEG"}
         </div>
       </div>
 
@@ -118,6 +126,7 @@ export default function DropZone({
       <input
         ref={inputRef}
         type="file"
+        disabled={disabled}
         accept=".tif,.tiff,.png,.jpg,.jpeg,.webp,.bmp,image/*"
         style={{ display: "none" }}
         onChange={(e) => {

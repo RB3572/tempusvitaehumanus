@@ -90,12 +90,17 @@ export default function Analyzer() {
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
-      {hasModel === false && <DemoNotice />}
+      {hasModel === false && <ModelUnavailableNotice />}
 
       <section className="panel">
         <div className={`panel-pad split-grid${analysis ? "" : " single"}`}>
           <div>
-            <DropZone onFile={handleFile} busy={busy} compact={!!analysis} />
+            <DropZone
+              onFile={handleFile}
+              busy={busy}
+              compact={!!analysis}
+              disabled={hasModel !== true}
+            />
 
             <label
               style={{
@@ -295,15 +300,9 @@ function Headline({
         }}
       >
         <span className="eyebrow">Hours until first cleavage</span>
-        {analysis.source === "demo" ? (
-          <span className="badge badge-warn">
-            <span className="badge-dot" /> Demo output
-          </span>
-        ) : (
-          <span className="badge badge-neutral">
-            <span className="badge-dot" /> {analysis.provider} · {Math.round(analysis.ms)} ms
-          </span>
-        )}
+        <span className="badge badge-neutral">
+          <span className="badge-dot" /> {analysis.provider} · {Math.round(analysis.ms)} ms
+        </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
@@ -471,7 +470,7 @@ function BimodalWarning({ post }: { post: Posterior }) {
   );
 }
 
-function DemoNotice() {
+function ModelUnavailableNotice() {
   return (
     <div
       className="panel"
@@ -496,7 +495,7 @@ function DemoNotice() {
               marginBottom: 4,
             }}
           >
-            Demo mode — no trained weights published yet
+            Model temporarily unavailable
           </div>
           <p
             style={{
@@ -508,12 +507,8 @@ function DemoNotice() {
               maxWidth: "76ch",
             }}
           >
-            Numbers shown below are <strong>synthetic</strong> and tell you nothing
-            about your image. They exist so the interface can be reviewed before the
-            model ships. Drop <code className="mono">cleavage.onnx</code> and{" "}
-            <code className="mono">model_meta.json</code> into{" "}
-            <code className="mono">public/models/</code> and every result becomes real
-            with no code change.
+            Predictions are disabled because the trained model could not be loaded.
+            No synthetic or substitute result will be generated. Please try again later.
           </p>
         </div>
       </div>

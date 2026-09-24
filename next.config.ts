@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/model-weights/:path*",
+        destination:
+          "https://pub-ba5c8c9e2af84560b29ea26ea363eb80.r2.dev/:path*",
+      },
+    ];
+  },
   async headers() {
     return [
       {
