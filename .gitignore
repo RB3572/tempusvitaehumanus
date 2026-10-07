@@ -59,3 +59,7 @@ __pycache__/
 
 # macOS AppleDouble sidecars, from the corpus drive
 ._*
+
+# Local wrangler/miniflare state: dev caches and an emulated R2 bucket that holds
+# copies of the model blobs. Machine-local, large, and not something to publish.
+.wrangler/

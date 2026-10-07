@@ -162,8 +162,16 @@ const META_URL = "/models/model_meta.json";
  *                  the bias on frames under an hour from division 0.99 -> 0.63 h. The
  *                  soft target is a Gaussian truncated at zero, so a wide sigma pushes
  *                  mass upward exactly where the answer is smallest.
+ * v4 (2026-10-07): new trunk. Same 96,000-step human delta-t pretext, but INITIALISED
+ *                  FROM THE SIBLING MOUSE PROJECT's SSL weights rather than from stock
+ *                  DINOv2 (99.9986% of parameters ported; only the 4 register tokens are
+ *                  new, the mouse architecture has none). Overall 1.256 h vs 1.281 --
+ *                  inside the noise floor, a tie. What earns the swap is the band table:
+ *                  0-1 h 0.669 -> 0.627 and 24-42 h 1.698 -> 1.640, with only 1-2 h
+ *                  marginally worse. The mouse start itself contributed nothing -- it ran
+ *                  BEHIND the stock-initialised trace until step ~60k and finished level.
  */
-const CACHE_NAME = "tempusvitae-model-v3";
+const CACHE_NAME = "tempusvitae-model-v4";
 
 export interface LoadProgress {
   /** Bytes received so far. */

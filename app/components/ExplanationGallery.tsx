@@ -26,20 +26,47 @@ import { useState } from "react";
  * reading "predicted 11.35 h" for a model that does not produce it.
  */
 
-// Rendered from trunk `ssl_vitl_96k (deployed bundle, sigma 0.25)`. Regenerate with scripts/sync_explain.py.
+// Rendered from trunk `ssl_from_mouse_96k (mouse-initialised, deployed bundle, sigma 0.25)`. Regenerate with scripts/sync_explain.py.
+
+/**
+ * MEASURED, NOT REMEMBERED.
+ *
+ * Every figure below is a row of `analysis/artifact_ratio.json`, computed over 48 frames
+ * for the trunk named in `measuredTrunk`, and `scripts/check_claims.py` fails if they
+ * drift from that file. They are constants rather than prose because the previous version
+ * of this component asserted the switch to register tokens "dropped that ratio to 1.4x"
+ * -- true of the stock weights, and false by a factor of six of the trunk actually being
+ * shipped. The measurement was right the whole time; the sentence had simply been typed
+ * once against a trunk that was later replaced, and prose does not get recomputed.
+ *
+ * `plainViT` is the one historical number with no file behind it: 11.8x, read off a
+ * single frame of the register-free ViT-L this project started from, before
+ * artifact_ratio.py existed. It is marked as such in the copy.
+ */
+const ARTIFACT = {
+  measuredTrunk: "incumbent",
+  deployedRatio: 8.18,
+  deployedTokens: 5.25,
+  stockRatio: 1.43,
+  stockTokens: 0.0,
+  fixedRatio: 2.46,
+  phase2Ratio: 2.32,
+  plainViT: 11.8,
+};
+
 type Item = { file: string; embryo: string; trueH: number; predH: number };
 
 const ITEMS: Item[] = [
-  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 0.69 },
-  { file: "01_GSS052-6_f84_gradient.png", embryo: "GSS052-6", trueH: 3.0, predH: 3.06 },
-  { file: "02_HE444-4_f67_gradient.png", embryo: "HE444-4", trueH: 5.8, predH: 6.02 },
-  { file: "03_LK584-2_f96_gradient.png", embryo: "LK584-2", trueH: 8.8, predH: 8.82 },
-  { file: "04_LL854-1_f53_gradient.png", embryo: "LL854-1", trueH: 11.7, predH: 11.54 },
-  { file: "05_LC161-2-5_f44_gradient.png", embryo: "LC161-2-5", trueH: 14.6, predH: 14.54 },
-  { file: "06_VF269-7_f34_gradient.png", embryo: "VF269-7", trueH: 17.6, predH: 17.48 },
-  { file: "07_RI273-6_f6_gradient.png", embryo: "RI273-6", trueH: 20.6, predH: 20.96 },
-  { file: "08_GSS052-2_f5_gradient.png", embryo: "GSS052-2", trueH: 23.9, predH: 23.85 },
-  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 38.45 },
+  { file: "00_LK523-2_f66_gradient.png", embryo: "LK523-2", trueH: 0.1, predH: 0.68 },
+  { file: "01_GSS052-6_f84_gradient.png", embryo: "GSS052-6", trueH: 3.0, predH: 2.93 },
+  { file: "02_HE444-4_f67_gradient.png", embryo: "HE444-4", trueH: 5.8, predH: 5.71 },
+  { file: "03_LK584-2_f96_gradient.png", embryo: "LK584-2", trueH: 8.8, predH: 8.37 },
+  { file: "04_LL854-1_f53_gradient.png", embryo: "LL854-1", trueH: 11.7, predH: 11.58 },
+  { file: "05_LC161-2-5_f44_gradient.png", embryo: "LC161-2-5", trueH: 14.6, predH: 14.72 },
+  { file: "06_VF269-7_f34_gradient.png", embryo: "VF269-7", trueH: 17.6, predH: 17.63 },
+  { file: "07_RI273-6_f6_gradient.png", embryo: "RI273-6", trueH: 20.6, predH: 21.52 },
+  { file: "08_GSS052-2_f5_gradient.png", embryo: "GSS052-2", trueH: 23.9, predH: 23.62 },
+  { file: "09_RM855-3_f1_gradient.png", embryo: "RM855-3", trueH: 41.5, predH: 40.99 },
 ];
 
 export default function ExplanationGallery() {
@@ -179,15 +206,47 @@ export default function ExplanationGallery() {
           maxWidth: "84ch",
         }}
       >
-        <strong style={{ color: "#3a3a36" }}>Why the backbone has register tokens.</strong>{" "}
+        <strong style={{ color: "#3a3a36" }}>
+          Register tokens, and the part that is not fixed.
+        </strong>{" "}
         An earlier version of these figures showed a bright blob on empty dish below the
         embryo. It was not the model reading a hidden timestamp — nothing in that region
-        correlates with elapsed time (max |r| = 0.09 over 3,000 frames). It was a single
-        high-norm <em>artifact token</em>: a plain DINOv2 ViT hijacks one low-information
-        patch as global scratch space, giving it a norm <strong>11.8×</strong> the median.
-        Switching to the four-register variant, which exists precisely for this, dropped
-        that ratio to <strong>1.4×</strong> with no token above threshold — and cost no
-        accuracy.
+        correlates with elapsed time (max |r| = 0.09 over 3,000 frames). It was a
+        high-norm <em>artifact token</em>: a plain DINOv2 ViT hijacks a low-information
+        patch as global scratch space, giving it a norm around{" "}
+        <strong>{ARTIFACT.plainViT}×</strong> the median for that image (a single-frame
+        reading, from before this was measured properly). The four-register variant exists
+        precisely for this, and with stock weights it works: measured over 48 frames it
+        sits at <strong>{ARTIFACT.stockRatio}×</strong>, with no token anywhere above
+        twice the median on any frame.
+        <br />
+        <br />
+        <strong style={{ color: "#3a3a36" }}>That is not true of the trunk you are
+        running.</strong>{" "}
+        This model's trunk starts from a register-<em>free</em> network — the mouse-embryo
+        model this project was built from — and 96,000 steps of training in the register
+        architecture did not make it give the habit up. Over the same 48 frames it
+        measures <strong>{ARTIFACT.deployedRatio}×</strong>, with about{" "}
+        <strong>{ARTIFACT.deployedTokens}</strong> tokens above twice the median on{" "}
+        <em>every</em> frame. Having the registers is not the same as using them.
+        <br />
+        <br />
+        This is disclosed rather than fixed, because fixing it was measured and it costs
+        accuracy. Penalising those tokens directly does work — it brings the ratio to{" "}
+        <strong>{ARTIFACT.fixedRatio}×</strong> and removes about four of the five — but
+        per-embryo error went from <strong>1.256 h</strong> to <strong>1.316 h</strong>,
+        twice the 0.03 h noise floor, and the under-1-hour band got worse too. Training
+        the fix more than three times as long pushed the ratio only a little further, to{" "}
+        <strong>{ARTIFACT.phase2Ratio}×</strong>, and cost <em>more</em> accuracy again
+        (1.331 h). So this is an exchange rate, not an unfinished job: on the hardware
+        available, a cleaner trunk is a worse predictor, and the model being accurate
+        matters more here than the picture being tidy.
+        <br />
+        <br />
+        The maps above are therefore shown with the caveat attached rather than quietly
+        cleaned up: on most frames the hot region sits on the zygote, and a handful of
+        high-norm tokens are in there too. That is what this model does, and a figure
+        that implied otherwise would be the more misleading of the two options.
       </div>
     </section>
   );
